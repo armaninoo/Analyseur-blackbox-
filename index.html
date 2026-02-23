@@ -2,161 +2,249 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>JIJ BENT DE DEPANNEUR - Analyseur BlackBox ARMAN</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Carrier JE BENT DE DEPANNEUR</title>
+    
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    
     <style>
         :root { --primary: #005eb8; --bg: #f4f7f6; --panel: #ffffff; --text: #333; --border: #e0e0e0; }
         body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        /* En-tête */
-        header { background: var(--primary); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 10; }
+        /* En-tête / Barre d'outils */
+        header { background: var(--primary); color: white; padding: 10px 15px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 10; gap: 10px; }
         .header-title { margin: 0; font-size: 1.2rem; font-weight: 600; }
-        .alarm-info { display: flex; gap: 20px; font-size: 0.9rem; background: rgba(255,255,255,0.1); padding: 5px 15px; border-radius: 5px;}
         
+        .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .marker-tool { display: flex; gap: 5px; align-items: center; background: rgba(255,255,255,0.15); padding: 5px 10px; border-radius: 6px; flex-wrap: wrap;}
+        .marker-tool span { font-size: 0.85rem; font-weight: bold; }
+        .marker-tool input { padding: 5px; border-radius: 4px; border: none; font-size: 0.85rem; outline: none; }
+        
+        .btn { padding: 6px 12px; cursor: pointer; border-radius: 4px; border: none; font-weight: bold; font-size: 0.9rem; transition: 0.2s; }
+        .btn-orange { background: #ff7f0e; color: white; }
+        .btn-orange:hover { background: #e67300; }
+        .btn-white { background: #ffffff; color: var(--text); }
+        .btn-white:hover { background: #e0e0e0; }
+        .btn-blue { background: #cce0ff; color: var(--primary); }
+        .btn-blue:hover { background: #99c2ff; }
+
         /* Zone principale */
-        .main-container { display: flex; flex: 1; overflow: hidden; }
+        .main-container { display: flex; flex: 1; overflow: hidden; flex-direction: row; }
         
-        /* Panneau latéral (Menu des variables) */
-        .sidebar { width: 320px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 5; }
-        .sidebar-header { padding: 15px; border-bottom: 1px solid var(--border); background: #f9f9f9; }
-        .sidebar-header input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; margin-top: 10px; }
-        .var-list { flex: 1; overflow-y: auto; padding: 10px 0; }
-        .var-item { padding: 6px 15px; display: flex; align-items: center; font-size: 0.85rem; cursor: pointer; transition: 0.2s; border-bottom: 1px solid #f0f0f0; }
-        .var-item:hover { background: #eef5fb; }
-        .var-item input { margin-right: 10px; cursor: pointer; }
-        .group-label { font-size: 0.7rem; font-weight: bold; color: #888; text-transform: uppercase; padding: 10px 15px 5px; background: #fff; position: sticky; top: 0; z-index: 2;}
+        /* Panneau latéral (Variables) */
+        .sidebar { width: 320px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 5; flex-shrink: 0; }
+        .sidebar-header { padding: 10px 15px; border-bottom: 1px solid var(--border); background: #f9f9f9; }
+        .sidebar-header input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; margin-top: 5px; font-size: 0.95rem;}
+        .var-list { flex: 1; overflow-y: auto; padding: 5px 0; }
+        .var-item { padding: 8px 15px; display: flex; align-items: center; font-size: 0.85rem; cursor: pointer; border-bottom: 1px solid #f0f0f0; touch-action: manipulation; }
+        .var-item:hover, .var-item:active { background: #eef5fb; }
+        .var-item input { margin-right: 12px; width: 16px; height: 16px; }
+        .group-label { font-size: 0.75rem; font-weight: bold; color: #888; text-transform: uppercase; padding: 10px 15px 5px; background: #fff; position: sticky; top: 0; z-index: 2;}
 
         /* Zone Graphique */
-        .content { flex: 1; display: flex; flex-direction: column; position: relative; padding: 20px; background: var(--bg); overflow-y: auto;}
+        .content { flex: 1; display: flex; flex-direction: column; position: relative; padding: 10px; background: var(--bg); overflow: hidden;}
         
         /* Drop Zone UI */
-        #drop-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.9); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 4px dashed var(--primary); margin: 20px; border-radius: 10px; cursor: pointer; transition: 0.2s; }
-        #drop-overlay:hover { background: #f0f7ff; }
-        #drop-overlay h2 { color: var(--primary); }
+        #drop-overlay { position: absolute; top: 10px; left: 10px; right: 10px; bottom: 10px; background: rgba(255,255,255,0.95); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 3px dashed var(--primary); border-radius: 12px; cursor: pointer; text-align: center; padding: 20px;}
+        #drop-overlay h2 { color: var(--primary); margin-bottom: 5px; font-size: 1.3rem;}
+        #drop-overlay p { color: #666; font-size: 0.9rem; }
         
-        #plot-container { background: white; flex: 1; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 10px; display: none; }
+        #plot-container { background: white; flex: 1; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 5px; display: none; width: 100%; height: 100%; }
+
+        /* Responsive Mobile */
+        @media (max-width: 900px) {
+            header { flex-direction: column; align-items: stretch; text-align: center; }
+            .toolbar { justify-content: center; }
+            .marker-tool { justify-content: center; width: 100%; }
+            .main-container { flex-direction: column; }
+            .sidebar { width: 100%; height: 35vh; border-right: none; border-bottom: 3px solid var(--primary); }
+            #drop-overlay { margin: 0; }
+        }
     </style>
 </head>
 <body>
 
     <header>
-        <h1 class="header-title">Carrier BlackBox Expert by Arman</h1>
-        <div class="alarm-info" id="alarm-banner">
-            En attente de fichier CSV...
+        <h1 class="header-title">Carrier JIJ BENT DE DEPANNEUR</h1>
+        
+        <div class="toolbar">
+            <div class="marker-tool">
+                <span>📍 Marqueur :</span>
+                <input type="date" id="evt-date" title="Laissez vide pour utiliser la date du fichier">
+                <input type="time" step="1" id="evt-time">
+                <button class="btn btn-orange" onclick="addCustomEvent()">Placer</button>
+                <button class="btn btn-white" onclick="clearCustomEvents()" style="color: #666;">Effacer</button>
+            </div>
+
+            <button class="btn btn-blue" onclick="document.getElementById('file-input').click()">+ Ajouter CSV</button>
+            <button class="btn btn-white" onclick="location.reload()">Réinitialiser</button>
         </div>
-        <button onclick="location.reload()" style="padding:5px 15px; cursor:pointer; background:white; color:var(--primary); border:none; border-radius:4px; font-weight:bold;">Nouveau fichier</button>
+        
+        <input type="file" id="file-input" style="display:none" accept=".csv" multiple>
     </header>
 
     <div class="main-container">
         <div class="sidebar">
             <div class="sidebar-header">
-                <strong style="font-size: 0.9rem;">Variables disponibles</strong>
-                <input type="text" id="search-var" placeholder="Filtrer (ex: SST, LWT, OAT...)" onkeyup="filterVars()">
+                <input type="text" id="search-var" placeholder="🔍 Filtrer (ex: SST, LWT...)" onkeyup="filterVars()">
+                <div id="data-stats" style="font-size: 0.75rem; color: #666; margin-top: 5px; text-align: center;">Aucun point chargé</div>
             </div>
-            <div class="var-list" id="var-list">
-                </div>
+            <div class="var-list" id="var-list"></div>
         </div>
 
         <div class="content">
             <div id="drop-overlay" onclick="document.getElementById('file-input').click()">
-                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#005eb8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                <h2>Glissez-déposez le fichier bb_collect_XXXX.csv ici</h2>
-                <p>ou cliquez pour parcourir</p>
-                <input type="file" id="file-input" style="display:none" accept=".csv">
+                <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="#005eb8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                <h2>Glissez vos fichiers CSV ici</h2>
+                <p>Supporte la sélection multiple (Fichiers Trend & BlackBox)</p>
             </div>
             <div id="plot-container"></div>
         </div>
     </div>
 
     <script>
-        let parsedData = [];
-        let timeArray = [];
-        let globalAlarmTime = null;
-        const colorPalette = ['#1f77b4', '#d62728', '#2ca02c', '#ff7f0e', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'];
-        let colorIndex = 0;
-        let selectedVars = new Set();
+        let allData = []; 
+        let rawFields = new Set(); 
+        let customEvents = []; 
+        let selectedVars = new Set(); 
         
-        // Date fictive pour forcer Plotly à comprendre que c'est une chronologie continue
-        const dummyDate = "2024-01-01 "; 
+        const colorPalette = ['#1f77b4', '#d62728', '#2ca02c', '#ff7f0e', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'];
+        const dummyDateStr = "2024/01/01"; 
 
         const dropOverlay = document.getElementById('drop-overlay');
         const fileInput = document.getElementById('file-input');
 
         dropOverlay.addEventListener('dragover', (e) => { e.preventDefault(); dropOverlay.style.background = '#eef5fb'; });
-        dropOverlay.addEventListener('dragleave', (e) => { e.preventDefault(); dropOverlay.style.background = 'rgba(255,255,255,0.9)'; });
-        dropOverlay.addEventListener('drop', (e) => { e.preventDefault(); processFile(e.dataTransfer.files[0]); });
-        fileInput.addEventListener('change', (e) => processFile(e.target.files[0]));
+        dropOverlay.addEventListener('dragleave', (e) => { e.preventDefault(); dropOverlay.style.background = 'rgba(255,255,255,0.95)'; });
+        dropOverlay.addEventListener('drop', (e) => { e.preventDefault(); processFiles(e.dataTransfer.files); });
+        fileInput.addEventListener('change', (e) => processFiles(e.target.files));
 
-        function processFile(file) {
-            if (!file) return;
-            const reader = new FileReader();
+        function processFiles(files) {
+            if (!files || files.length === 0) return;
             
-            reader.onload = function(e) {
-                const text = e.target.result;
-                const lines = text.split(/\r?\n/);
-                
-                let alarmCode = "N/A", alarmDate = "N/A", alarmTime = "N/A";
-                let dataStartIndex = -1;
-
-                for (let i = 0; i < lines.length; i++) {
-                    const line = lines[i];
-                    if (line.includes('Alarm Code:')) alarmCode = line.split(':')[1].trim();
-                    if (line.includes('Event Date:')) alarmDate = line.split(':')[1].trim();
-                    if (line.includes('Event Time:')) {
-                        let parts = line.split(':');
-                        alarmTime = parts.slice(1).join(':').trim();
+            let filesProcessed = 0;
+            
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const text = e.target.result;
+                    const lines = text.split(/\r?\n/);
+                    
+                    let isTrendFile = false;
+                    let csvData = "";
+                    
+                    if (lines[0] && lines[0].startsWith('(s);Date;Time;')) {
+                        isTrendFile = true;
+                        csvData = lines[0] + '\n' + lines.slice(2).filter(l => l.includes(';')).join('\n');
+                    } else {
+                        let dataStartIndex = -1;
+                        let alarmTimeStr = null;
+                        let alarmCode = "DÉFAUT";
+                        
+                        for (let i = 0; i < lines.length; i++) {
+                            if (lines[i].includes('Alarm Code:')) alarmCode = lines[i].split(':')[1].trim();
+                            if (lines[i].includes('Event Time:')) alarmTimeStr = lines[i].split(':').slice(1).join(':').trim();
+                            if (lines[i].startsWith('Time;')) { dataStartIndex = i; break; }
+                        }
+                        
+                        if (dataStartIndex !== -1) {
+                            csvData = lines.slice(dataStartIndex).filter(l => l.includes(';') && !l.includes('[END_COLLECT]')).join('\n');
+                            if (alarmTimeStr) {
+                                customEvents.push({ time: new Date(`${dummyDateStr} ${alarmTimeStr}`), label: `ALARME ${alarmCode}`, color: 'red' });
+                            }
+                        }
                     }
-                    if (line.startsWith('Time;')) {
-                        dataStartIndex = i;
-                        break;
-                    }
-                }
 
-                if (dataStartIndex === -1) {
-                    alert("Erreur: Impossible de trouver la ligne des colonnes ('Time;...'). Ce fichier n'est pas un CSV BlackBox valide.");
-                    return;
-                }
-
-                // On attache la date fictive à l'heure de l'alarme
-                globalAlarmTime = alarmTime ? (dummyDate + alarmTime) : null;
-                
-                document.getElementById('alarm-banner').innerHTML = `
-                    <span><b>Alarme :</b> <span style="color:#ffb3b3;">${alarmCode}</span></span>
-                    <span><b>Date :</b> ${alarmDate}</span>
-                    <span><b>Heure du déclenchement :</b> <span style="color:#ffb3b3;">${alarmTime}</span></span>
-                `;
-
-                const csvData = lines.slice(dataStartIndex).filter(l => l.includes(';') && !l.includes('[END_COLLECT]')).join('\n');
-
-                Papa.parse(csvData, {
-                    delimiter: ';',
-                    header: true,
-                    dynamicTyping: true,
-                    skipEmptyLines: true,
-                    complete: function(results) {
-                        parsedData = results.data;
-                        
-                        // On attache la date fictive à chaque point de temps pour créer un vrai axe temporel
-                        timeArray = parsedData.map(row => row['Time'] ? (dummyDate + row['Time']) : null); 
-                        
-                        const rawFields = results.meta.fields.filter(f => f && f !== 'Time' && !f.startsWith('Unnamed'));
-                        
-                        buildSidebar(rawFields);
-                        
-                        document.getElementById('drop-overlay').style.display = 'none';
-                        document.getElementById('plot-container').style.display = 'block';
-                        
-                        const defaultSelection = ['TEMP_EWT', 'TEMP_LWT', 'TEMP_SST_A', 'PRESSURE_SP_A', 'OUTPUTS_VCP_A', 'PUMPSTAT_WAT_FLOW'];
-                        defaultSelection.forEach(val => {
-                            if(rawFields.includes(val)) toggleVar(val, true);
+                    if (csvData) {
+                        Papa.parse(csvData, {
+                            delimiter: ';', header: true, dynamicTyping: true, skipEmptyLines: true,
+                            complete: function(results) {
+                                results.data.forEach(row => {
+                                    let tDate;
+                                    if (isTrendFile && row['Date'] && row['Time']) {
+                                        let d = row['Date'].split('.'); 
+                                        tDate = new Date(`20${d[2]}/${d[1]}/${d[0]} ${row['Time']}`);
+                                    } else if (row['Time']) {
+                                        tDate = new Date(`${dummyDateStr} ${row['Time']}`);
+                                    }
+                                    
+                                    if (tDate && !isNaN(tDate)) {
+                                        row._timestamp = tDate; 
+                                        allData.push(row);
+                                    }
+                                });
+                                
+                                results.meta.fields.forEach(f => {
+                                    if (f && f !== 'Time' && f !== 'Date' && f !== '(s)' && !f.startsWith('Unnamed')) {
+                                        rawFields.add(f);
+                                    }
+                                });
+                                
+                                filesProcessed++;
+                                if (filesProcessed === files.length) finalizeDataProcessing();
+                            }
                         });
-                        
-                        drawPlot();
+                    } else {
+                        filesProcessed++;
+                        if (filesProcessed === files.length) finalizeDataProcessing();
                     }
+                };
+                reader.readAsText(file, "ISO-8859-1");
+            });
+            
+            fileInput.value = "";
+        }
+
+        function finalizeDataProcessing() {
+            if (allData.length === 0) return;
+            
+            allData.sort((a, b) => a._timestamp - b._timestamp);
+            document.getElementById('data-stats').innerHTML = `<b>${allData.length}</b> points de mesure chargés`;
+            buildSidebar(Array.from(rawFields));
+            
+            document.getElementById('drop-overlay').style.display = 'none';
+            document.getElementById('plot-container').style.display = 'block';
+            
+            if (selectedVars.size === 0) {
+                const defaultSelection = ['TEMP_EWT(°C)', 'TEMP_LWT(°C)', 'TEMP_SST_A(°C)', 'TEMP_EWT', 'TEMP_LWT', 'TEMP_SST_A', 'PRESSURE_SP_A'];
+                defaultSelection.forEach(val => {
+                    if(rawFields.has(val)) toggleVar(val, true);
                 });
-            };
-            reader.readAsText(file, "ISO-8859-1");
+            } else {
+                drawPlot();
+            }
+        }
+
+        function addCustomEvent() {
+            const dStr = document.getElementById('evt-date').value;
+            const tStr = document.getElementById('evt-time').value;
+            
+            if (!tStr) { alert("Veuillez au moins renseigner l'heure !"); return; }
+            if (allData.length === 0) { alert("Veuillez d'abord charger un fichier !"); return; }
+            
+            let baseDateStr = "";
+            if (dStr) {
+                baseDateStr = dStr.replace(/-/g, '/');
+            } else {
+                const fd = allData[0]._timestamp;
+                const YYYY = fd.getFullYear();
+                const MM = (fd.getMonth() + 1).toString().padStart(2, '0');
+                const DD = fd.getDate().toString().padStart(2, '0');
+                baseDateStr = `${YYYY}/${MM}/${DD}`;
+            }
+            
+            const finalDate = new Date(`${baseDateStr} ${tStr}`);
+            
+            if (!isNaN(finalDate)) {
+                customEvents.push({ time: finalDate, label: `OBS: ${tStr}`, color: '#ff7f0e' });
+                drawPlot();
+            }
+        }
+
+        function clearCustomEvents() {
+            customEvents = customEvents.filter(e => e.color === 'red');
+            drawPlot();
         }
 
         function buildSidebar(fields) {
@@ -165,10 +253,10 @@
             
             const groups = {
                 "TEMPÉRATURES": fields.filter(f => f.includes('TEMP_')),
-                "PRESSIONS": fields.filter(f => f.includes('PRESSURE_')),
-                "RÉGULATION & ACTIONNEURS": fields.filter(f => f.includes('OUTPUTS_') || f.includes('CAPACTRL_')),
-                "HYDRAULIQUE": fields.filter(f => f.includes('PUMP')),
-                "AUTRES": fields.filter(f => !f.includes('TEMP_') && !f.includes('PRESSURE_') && !f.includes('OUTPUTS_') && !f.includes('CAPACTRL_') && !f.includes('PUMP'))
+                "PRESSIONS": fields.filter(f => f.includes('PRESSURE_') || f.includes('P_OUT') || f.includes('P_IN')),
+                "ACTIONNEURS": fields.filter(f => f.includes('OUTPUTS_') || f.includes('CAPACTRL_')),
+                "HYDRAULIQUE": fields.filter(f => f.includes('PUMP') && !f.includes('P_OUT') && !f.includes('P_IN')),
+                "AUTRES": fields.filter(f => !f.includes('TEMP_') && !f.includes('PRESSURE_') && !f.includes('P_OUT') && !f.includes('P_IN') && !f.includes('OUTPUTS_') && !f.includes('CAPACTRL_') && !f.includes('PUMP'))
             };
 
             for (const [groupName, vars] of Object.entries(groups)) {
@@ -182,18 +270,24 @@
                 vars.forEach(v => {
                     const item = document.createElement('label');
                     item.className = 'var-item var-row';
-                    item.innerHTML = `<input type="checkbox" id="chk-${v}" value="${v}" onchange="toggleVar('${v}', this.checked); drawPlot()"> ${v}`;
+                    const cleanName = v.replace(/\(.*?\)/g, ''); 
+                    
+                    const isChecked = selectedVars.has(v) ? 'checked' : '';
+                    const safeId = v.replace(/[^a-zA-Z0-9]/g, '_');
+                    
+                    item.innerHTML = `<input type="checkbox" id="chk-${safeId}" value="${v}" onchange="toggleVar('${v}', this.checked); drawPlot()" ${isChecked}> ${cleanName}`;
                     listObj.appendChild(item);
                 });
             }
         }
 
         function toggleVar(varName, isChecked) {
-            const checkbox = document.getElementById(`chk-${varName}`);
+            const safeId = varName.replace(/[^a-zA-Z0-9]/g, '_');
+            const checkbox = document.getElementById(`chk-${safeId}`);
             if(checkbox) checkbox.checked = isChecked;
             
-            if (isChecked) { selectedVars.add(varName); } 
-            else { selectedVars.delete(varName); }
+            if (isChecked) { selectedVars.add(varName); } else { selectedVars.delete(varName); }
+            drawPlot(); 
         }
 
         function drawPlot() {
@@ -204,26 +298,28 @@
 
             let traces = [];
             colorIndex = 0;
+            
+            const timeArray = allData.map(d => d._timestamp);
 
             selectedVars.forEach(varName => {
-                let yAxisID = 'y';
-                let yAxisName = 'y';
+                let yAxisID = 'y'; let yAxisName = 'y';
                 
-                if (varName.includes('OUTPUTS_') || varName.includes('FLOW') || varName.includes('fanSp') || varName.includes('PCT')) {
-                    yAxisID = 'y2';
-                    yAxisName = 'y2';
+                if (varName.includes('OUTPUTS_') || varName.includes('FLOW') || varName.includes('fanSp') || varName.includes('CAPA_T') || varName.includes('(%)')) {
+                    yAxisID = 'y2'; yAxisName = 'y2';
                 }
 
-                let yValues = parsedData.map(row => {
+                let yValues = allData.map(row => {
                     let val = row[varName];
                     if(typeof val === 'string') val = parseFloat(val.replace(',','.'));
                     return isNaN(val) ? null : val;
                 });
 
+                const cleanLegend = varName.replace(/\(.*?\)/g, '');
+
                 traces.push({
                     x: timeArray,
                     y: yValues,
-                    name: varName,
+                    name: cleanLegend,
                     type: 'scatter',
                     mode: 'lines',
                     yaxis: yAxisName,
@@ -232,62 +328,45 @@
                 colorIndex++;
             });
 
+            const isMobile = window.innerWidth <= 900;
+            
             const layout = {
                 hovermode: 'x unified',
-                plot_bgcolor: '#fcfcfc',
+                plot_bgcolor: '#ffffff',
                 paper_bgcolor: '#ffffff',
-                margin: { l: 50, r: 50, t: 30, b: 40 },
+                margin: { l: 40, r: 40, t: 20, b: 30 },
                 xaxis: { 
-                    title: 'Heure', 
-                    showgrid: true, 
-                    gridcolor: '#eee',
-                    type: 'date', /* FORCE L'AXE EN MODE TEMPS CONTINU */
-                    tickformat: '%H:%M:%S' /* N'AFFICHE QUE L'HEURE POUR RESTER LISIBLE */
+                    type: 'date',
+                    tickformat: '%d/%m %H:%M:%S',
+                    showgrid: true, gridcolor: '#f0f0f0',
+                    fixedrange: false /* Autorise le zoom sur l'axe X */
                 },
-                yaxis: { 
-                    title: 'Températures (°C) / Pressions', 
-                    showgrid: true, 
-                    gridcolor: '#eee' 
-                },
-                yaxis2: { 
-                    title: 'Actionneurs (%) / Débits', 
-                    overlaying: 'y', 
-                    side: 'right', 
-                    showgrid: false 
-                },
-                legend: { 
-                    orientation: 'h', 
-                    y: 1.1, 
-                    x: 0 
-                },
+                yaxis: { showgrid: true, gridcolor: '#f0f0f0', zeroline: false, fixedrange: false },
+                yaxis2: { overlaying: 'y', side: 'right', showgrid: false, zeroline: false, fixedrange: false },
+                legend: { orientation: 'h', y: 1.15, x: 0, font: {size: 10} },
                 shapes: [],
                 annotations: []
             };
 
-            if (globalAlarmTime) {
-                // xref: 'x' attache le dessin aux données, pas à l'écran !
+            customEvents.forEach((evt, index) => {
                 layout.shapes.push({
-                    type: 'line', 
-                    xref: 'x', yref: 'paper', 
-                    x0: globalAlarmTime, x1: globalAlarmTime, 
-                    y0: 0, y1: 1, 
-                    line: { color: 'red', width: 2, dash: 'dot' }
+                    type: 'line', xref: 'x', yref: 'paper', 
+                    x0: evt.time, x1: evt.time, y0: 0, y1: 1, 
+                    line: { color: evt.color, width: 2, dash: 'dot' }
                 });
                 layout.annotations.push({
-                    xref: 'x', yref: 'paper',
-                    x: globalAlarmTime, y: 1, 
-                    text: 'DÉCLENCHEMENT ALARME', 
-                    showarrow: true, arrowhead: 2, ax: 0, ay: -30, 
-                    font: { color: 'white', size: 10 },
-                    bgcolor: 'red', borderpad: 4, bordercolor: 'red'
+                    xref: 'x', yref: 'paper', x: evt.time, y: 1, 
+                    text: evt.label, 
+                    showarrow: true, arrowhead: 2, ax: 0, ay: -20 - ((index % 3) * 15),
+                    font: { color: 'white', size: 10, fontfamily: 'sans-serif' }, bgcolor: evt.color, borderpad: 3, bordercolor: evt.color
                 });
-            }
+            });
 
             Plotly.newPlot('plot-container', traces, layout, {
                 responsive: true,
                 displaylogo: false,
-                modeBarButtonsToRemove: ['lasso2d', 'select2d'],
-                toImageButtonOptions: { format: 'png', filename: 'Analyse_BlackBox', width: 1600, height: 800 }
+                scrollZoom: true, /* LE BOUTON MAGIQUE : Active le zoom à la molette ! */
+                modeBarButtonsToRemove: ['lasso2d', 'select2d', 'autoScale2d']
             });
         }
 
@@ -296,11 +375,7 @@
             let items = document.getElementsByClassName('var-row');
             for (let i = 0; i < items.length; i++) {
                 let txtValue = items[i].textContent || items[i].innerText;
-                if (txtValue.toUpperCase().indexOf(input) > -1) {
-                    items[i].style.display = "flex";
-                } else {
-                    items[i].style.display = "none";
-                }
+                items[i].style.display = txtValue.toUpperCase().indexOf(input) > -1 ? "flex" : "none";
             }
         }
     </script>
